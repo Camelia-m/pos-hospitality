@@ -33,7 +33,7 @@ spring:
       ack-mode: manual
 
 server:
-  port: 8082
+  port: ${PORT:8080}
 
 logging:
   level:
