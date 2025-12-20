@@ -41,13 +41,12 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Verify gcloud project
-        run: gcloud config get-value project
       # Build & push Docker image
       - name: Build container image
         run: |
           gcloud builds submit order-service \
             --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service
+            --no-stream-logs
 
       #  Deploy to Cloud Run
       - name: Deploy to Cloud Run
