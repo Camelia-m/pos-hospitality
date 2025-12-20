@@ -42,7 +42,8 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-
+      - name: Verify gcloud project
+        run: gcloud config get-value project
       # Build & push Docker image
       - name: Build container image
         run: |
