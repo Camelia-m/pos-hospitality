@@ -1,6 +1,5 @@
 package com.pao.payment.repository;
 
-import com.pao.payment.domain.OfflinePaymentQueue;
 import com.pao.payment.domain.Payment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

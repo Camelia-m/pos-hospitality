@@ -1,6 +1,5 @@
 package com.pao.payment.gateway;
 
-import lombok.*;
 import java.math.BigDecimal;
 
 public interface PaymentGateway {
