@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.pao</groupId>
-    <artifactId>order-platform</artifactId>
+    <artifactId>hospitality-pos</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 

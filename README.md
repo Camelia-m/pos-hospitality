@@ -1,4 +1,4 @@
-# Order at restaurant - Event-Driven Microservices Architecture
+# Pos hospitality - Event-Driven Microservices Architecture
 
 A production-ready, event-driven microservices architecture for hospitality Point-of-Sale systems, built with Spring Boot and designed for offline-first operation.
 
@@ -66,11 +66,11 @@ A production-ready, event-driven microservices architecture for hospitality Poin
 ## Getting Started
 
 ### Prerequisites
-- Java 17+
+- Java 21
 - Maven 3.8+
 - Docker & Docker Compose
 - PostgreSQL 15
-- Apache Kafka 3.5+
+- Apache Kafka 7.5+ (via Confluent Platform)
 
 ### Infrastructure Setup
 
@@ -85,7 +85,8 @@ docker-compose ps
 This starts:
 - Kafka (localhost:9092)
 - Zookeeper (localhost:2181)
-- PostgreSQL instances (ports 5432-5434)
+- ZooNavigator (localhost:9000) - Kafka cluster management UI
+- PostgreSQL instance with multiple databases (ports 5432-5434)
 - Redis (localhost:6379)
 
 ### Build & Run Services
@@ -180,7 +181,7 @@ curl -X POST http://localhost:8083/api/payments \
   }'
 ```
 
-## 🔄 Event Flow
+## Event Flow
 
 ### Order Placement Flow
 
@@ -220,7 +221,7 @@ curl -X POST http://localhost:8083/api/payments \
    - Background Job: Retry with exponential backoff
 ```
 
-## 🛡️ Resilience Patterns
+## Resilience Patterns
 
 ### Idempotency
 ```java
@@ -266,7 +267,7 @@ public class Order {
 }
 ```
 
-## 📊 Kafka Topics
+## Kafka Topics
 
 | Topic | Partitions | Purpose |
 |-------|------------|---------|
@@ -308,15 +309,164 @@ public class Order {
 }
 ```
 
+## Docker Deployment
+
+Each service includes a Dockerfile for containerized deployment:
+
+```bash
+# Build Docker images locally
+cd order-service && docker build -t order-service:latest .
+cd kitchen-service && docker build -t kitchen-service:latest .
+cd payment-service && docker build -t payment-service:latest .
+
+# Run containers locally
+docker run -p 8081:8080 order-service:latest
+docker run -p 8082:8080 kitchen-service:latest
+docker run -p 8083:8080 payment-service:latest
+```
+
+##  Production Deployment (Google Cloud Run)
+
+Services are deployed to Google Cloud Run for production. Each service is containerized and deployed as a serverless container.
+
+### Prerequisites for Cloud Run
+
+- Google Cloud SDK installed and configured
+- Docker installed
+- GCP project with Cloud Run API enabled
+- Artifact Registry or Container Registry configured
+
+### Manual Deployment
+
+```bash
+# Build and push to Google Container Registry
+gcloud builds submit --tag gcr.io/PROJECT_ID/order-service ./order-service
+gcloud builds submit --tag gcr.io/PROJECT_ID/kitchen-service ./kitchen-service
+gcloud builds submit --tag gcr.io/PROJECT_ID/payment-service ./payment-service
+
+# Deploy to Cloud Run
+gcloud run deploy order-service \
+  --image gcr.io/PROJECT_ID/order-service \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080 \
+  --memory 512Mi \
+  --cpu 1 \
+  --min-instances 1 \
+  --max-instances 10
+
+gcloud run deploy kitchen-service \
+  --image gcr.io/PROJECT_ID/kitchen-service \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080 \
+  --memory 512Mi \
+  --cpu 1 \
+  --min-instances 1 \
+  --max-instances 10
+
+gcloud run deploy payment-service \
+  --image gcr.io/PROJECT_ID/payment-service \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080 \
+  --memory 512Mi \
+  --cpu 1 \
+  --min-instances 1 \
+  --max-instances 10
+```
+
+### Environment Variables for Cloud Run
+
+Set environment variables for each service:
+
+```bash
+# Order Service
+gcloud run services update order-service \
+  --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://DB_HOST:5432/order_service,SPRING_KAFKA_BOOTSTRAP_SERVERS=KAFKA_HOST:9092,SPRING_DATA_REDIS_HOST=REDIS_HOST"
+
+# Kitchen Service
+gcloud run services update kitchen-service \
+  --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://DB_HOST:5433/kitchen_service,SPRING_KAFKA_BOOTSTRAP_SERVERS=KAFKA_HOST:9092"
+
+# Payment Service
+gcloud run services update payment-service \
+  --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://DB_HOST:5434/payment_service,SPRING_KAFKA_BOOTSTRAP_SERVERS=KAFKA_HOST:9092"
+```
+
+## CI/CD with GitHub Actions
+
+The project uses GitHub Actions for continuous integration and deployment to Google Cloud Run.
+
+### GitHub Actions Workflow
+
+The CI/CD pipeline automatically:
+1. Builds and tests the application on every push
+2. Builds Docker images on successful tests
+3. Pushes images to Google Container Registry
+4. Deploys to Cloud Run on merge to main branch
+
+### Required GitHub Secrets
+
+Configure the following secrets in your GitHub repository:
+
+- `GCP_PROJECT_ID`: Your Google Cloud Project ID
+- `GCP_SA_KEY`: Service account key JSON for Cloud Run deployment
+- `GCP_REGION`: Deployment region (e.g., `us-central1`)
+
+### Workflow Example
+
+```yaml
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      
+      - name: Build and Deploy Order Service
+        run: |
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service ./order-service
+          gcloud run deploy order-service --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service --region ${{ secrets.GCP_REGION }}
+      
+      # Similar steps for kitchen-service and payment-service
+```
+
+### Cloud Run Features
+
+- **Auto-scaling**: Automatically scales from 0 to configured max instances
+- **Health Checks**: Uses Spring Boot Actuator health endpoints
+- **Request Timeout**: Configurable request timeout (default 300s)
+- **Concurrency**: Handles multiple requests per instance
+- **VPC Connectivity**: Can connect to Cloud SQL and other GCP services via VPC
+
 ## 🔧 Configuration
 
 ### Environment Variables
+
+#### Local Development
 
 ```bash
 # Order Service
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/order_service
 SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-REDIS_HOST=localhost
+SPRING_DATA_REDIS_HOST=localhost
 
 # Kitchen Service
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/kitchen_service
@@ -327,7 +477,34 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5434/payment_service
 SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 ```
 
-## 🧪 Testing
+#### Production (Google Cloud Run)
+
+Environment variables are configured via Cloud Run service settings or Secret Manager:
+
+```bash
+# Order Service
+SPRING_DATASOURCE_URL=jdbc:postgresql://CLOUD_SQL_INSTANCE/order_service
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=<from-secret-manager>
+SPRING_KAFKA_BOOTSTRAP_SERVERS=KAFKA_CLUSTER_HOST:9092
+SPRING_DATA_REDIS_HOST=REDIS_INSTANCE_HOST
+
+# Kitchen Service
+SPRING_DATASOURCE_URL=jdbc:postgresql://CLOUD_SQL_INSTANCE/kitchen_service
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=<from-secret-manager>
+SPRING_KAFKA_BOOTSTRAP_SERVERS=KAFKA_CLUSTER_HOST:9092
+
+# Payment Service
+SPRING_DATASOURCE_URL=jdbc:postgresql://CLOUD_SQL_INSTANCE/payment_service
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=<from-secret-manager>
+SPRING_KAFKA_BOOTSTRAP_SERVERS=KAFKA_CLUSTER_HOST:9092
+```
+
+**Note**: For production, use Google Secret Manager for sensitive values like database passwords and API keys.
+
+## Testing
 
 ```bash
 # Unit tests
@@ -344,24 +521,31 @@ class OrderServiceTest {
 }
 ```
 
-## 📈 Monitoring & Observability
+##  Monitoring & Observability
 
 - **Logging**: SLF4J with Logback
-- **Metrics**: Actuator endpoints
-- **Health Checks**: `/actuator/health`
-- **Kafka Lag Monitoring**: Consumer group offsets
+- **Metrics**: Spring Boot Actuator endpoints
+- **Health Checks**: `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`
+- **Kafka Lag Monitoring**: Consumer group offsets via ZooNavigator (http://localhost:9000)
+- **API Documentation**: SpringDoc OpenAPI (Swagger UI) available at `/swagger-ui.html` for each service
 
-## 🏆 Best Practices Implemented
+##  Best Practices Implemented
 
-1. **Domain-Driven Design**: Clear bounded contexts
-2. **Database Per Service**: Data isolation
+1. **Domain-Driven Design**: Clear bounded contexts per service
+2. **Database Per Service**: Data isolation with separate PostgreSQL databases
 3. **API Versioning**: Future-proof endpoints
 4. **Error Handling**: Comprehensive exception handling
 5. **Validation**: Request validation with Bean Validation
-6. **Documentation**: Swagger/OpenAPI ready
+6. **Documentation**: SpringDoc OpenAPI (Swagger UI) integrated
 7. **Security**: Ready for Spring Security integration
+8. **Containerization**: Dockerfiles for each service
+9. **Serverless Deployment**: Google Cloud Run for production with auto-scaling
+10. **CI/CD**: GitHub Actions for automated build, test, and deployment
+11. **Event-Driven**: Asynchronous communication via Kafka
+12. **Idempotency**: Payment operations support idempotency keys
+13. **Manual Acknowledgment**: Kitchen service uses manual Kafka offset commits for reliability
 
-## 🔮 Future Enhancements
+##  Future Enhancements
 
 - [ ] Menu Service with real-time availability
 - [ ] Table Service with floor plan management
@@ -373,14 +557,39 @@ class OrderServiceTest {
 - [ ] Distributed Tracing with Zipkin
 - [ ] Circuit Breakers with Resilience4j
 
-## 📝 License
+## ️ Database Schema
+
+Each service maintains its own database:
+
+- **order_service** (Port 5432): Order and order item entities
+- **kitchen_service** (Port 5433): Kitchen tickets and ticket items
+- **payment_service** (Port 5434): Payments and offline payment queue
+
+Schema initialization scripts are located in each service's `src/main/resources/` directory:
+- `order-schema.sql`
+- `kitchen-schema.sql`
+- `payment-schema.sql`
+
+## API Documentation
+
+Each service exposes Swagger UI for interactive API documentation:
+
+- **Order Service**: http://localhost:8081/swagger-ui.html
+- **Kitchen Service**: http://localhost:8082/swagger-ui.html
+- **Payment Service**: http://localhost:8083/swagger-ui.html
+
+API documentation is automatically generated from SpringDoc OpenAPI annotations.
+
+## License
 
 MIT License - feel free to use for your projects!
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! This is a reference architecture for learning and production use.
 
 ---
 
 **Built with ❤️ for the hospitality industry**
+
+**Tech Stack**: Java 21 • Spring Boot 3.3.2 • Apache Kafka • PostgreSQL • Redis • Docker • Google Cloud Run • GitHub Actions
