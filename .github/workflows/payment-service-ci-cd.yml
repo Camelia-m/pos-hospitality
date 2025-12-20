@@ -2,11 +2,9 @@ name: CI/CD - Payment Service
 
 on:
   push:
-    paths:
-      - 'payment-service/**'
+    branches: ["**"]
   pull_request:
-    paths:
-      - 'payment-service/**'
+    branches: ["**"]
 
 jobs:
   build-test-deploy:
@@ -48,6 +46,7 @@ jobs:
         run: |
           gcloud builds submit payment-service \
             --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/payment-service
+            --no-stream-logs
 
       #  Deploy to Cloud Run
       - name: Deploy to Cloud Run

@@ -2,11 +2,10 @@ name: CI/CD - Kitchen Service
 
 on:
   push:
-    paths:
-      - 'kitchen-service/**'
+    branches: ["**"]
   pull_request:
-    paths:
-      - 'kitchen-service/**'
+    branches: ["**"]
+
 
 jobs:
   build-test-deploy:
@@ -48,6 +47,7 @@ jobs:
         run: |
           gcloud builds submit kitchen-service \
             --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/kitchen-service
+            --no-stream-logs
 
       #  Deploy to Cloud Run
       - name: Deploy to Cloud Run
