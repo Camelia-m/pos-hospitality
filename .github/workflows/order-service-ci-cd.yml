@@ -2,11 +2,9 @@ name: CI/CD - Order Service
 
 on:
   push:
-    paths:
-      - 'order-service/**'
+    branches: ["**"]
   pull_request:
-    paths:
-      - 'order-service/**'
+    branches: ["**"]
 
 jobs:
   build-test-deploy:
