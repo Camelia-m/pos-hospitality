@@ -46,7 +46,6 @@ jobs:
         run: |
           gcloud builds submit order-service \
             --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service
-            --no-stream-logs
 
       #  Deploy to Cloud Run
       - name: Deploy to Cloud Run
