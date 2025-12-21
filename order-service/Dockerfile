@@ -2,19 +2,26 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /build
 
-# Copy entire multi-module project
-COPY . .
+# Copy parent POM first
+COPY pom.xml .
 
-# Build only this service, but with parent available
-RUN mvn -pl order-service -am clean package -DskipTests
+# Copy order-service module
+COPY order-service ./order-service
 
+# Build the service - the spring-boot-maven-plugin should repackage automatically
+RUN mvn -pl order-service -am clean install -DskipTests
 
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 ENV PORT=8080
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
+# Copy the executable jar (should be in target/)
 COPY --from=build /build/order-service/target/*.jar app.jar
 
+# Verify the jar is executable
+RUN jar -tf app.jar | grep -q "org/springframework/boot/loader" || (echo "ERROR: Not a Spring Boot executable jar" && exit 1)
+
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
