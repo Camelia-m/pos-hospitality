@@ -44,9 +44,7 @@ jobs:
       # Build & push Docker image (from root, with config pointing to payment-service Dockerfile)
       - name: Build container image
         run: |
-          gcloud builds submit \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/payment-service \
-            --config payment-service/cloudbuild.yaml
+          gcloud builds submit --config payment-service/cloudbuild.yaml
 
       #  Deploy to Cloud Run
       - name: Deploy to Cloud Run
