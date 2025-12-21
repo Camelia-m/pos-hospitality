@@ -53,4 +53,13 @@ jobs:
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service \
             --platform managed \
             --region ${{ secrets.GCP_REGION }} \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --port 8080 \
+            --timeout 300 \
+            --memory 1Gi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --startup-cpu-boost \
+            --cpu-throttling \
+            --execution-environment gen2

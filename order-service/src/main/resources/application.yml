@@ -1,46 +1,67 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: order-service
 
+  # Database configuration - use environment variables
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/orderdb}
     username: ${DATABASE_USERNAME:postgres}
     password: ${DATABASE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      initialization-fail-timeout: -1
+      connection-timeout: 3000
+      # Don't fail if DB is unreachable
+      connection-test-query: SELECT 1
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${HIBERNATE_DDL_AUTO:none}
+    show-sql: false
+    # Don't fail on startup if DB is unreachable
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
 
+  # Kafka configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      acks: all
-      retries: 3
     consumer:
       group-id: order-service
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "*"
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
-  data:
-    redis:
-      host: localhost
-      port: 6379
-
-server:
-  port: ${PORT:8080}
-
-logging:
-  level:
-    com.hospitality.order: DEBUG
-    org.springframework.kafka: INFO
+# Management and health check configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+    # Don't let DB or Kafka health affect startup
+    db:
+      enabled: false
+    kafka:
+      enabled: false
+    diskspace:
+      enabled: false
