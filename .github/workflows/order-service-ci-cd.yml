@@ -60,6 +60,5 @@ jobs:
             --cpu 1 \
             --min-instances 0 \
             --max-instances 10 \
-            --startup-cpu-boost \
-            --cpu-throttling \
+            --cpu-boost \
             --execution-environment gen2
