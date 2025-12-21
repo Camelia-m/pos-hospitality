@@ -41,11 +41,12 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      # Build & push Docker image
+      # Build & push Docker image (from root, with config pointing to order-service Dockerfile)
       - name: Build container image
         run: |
-          gcloud builds submit order-service \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service
+          gcloud builds submit \
+            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/order-service \
+            --config order-service/cloudbuild.yaml
 
       #  Deploy to Cloud Run
       - name: Deploy to Cloud Run
