@@ -5,8 +5,11 @@ WORKDIR /build
 # Copy the entire project structure
 COPY . .
 
-# Build only the kitchen-service module
-RUN mvn -pl kitchen-service -am clean install -DskipTests
+# First, install the parent POM
+RUN mvn -N install
+
+# Then build and package kitchen-service specifically
+RUN cd kitchen-service && mvn clean package -DskipTests
 
 FROM eclipse-temurin:21-jre
 

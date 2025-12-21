@@ -5,8 +5,11 @@ WORKDIR /build
 # Copy the entire project structure
 COPY . .
 
-# Build only the order-service module
-RUN mvn -pl order-service -am clean install -DskipTests
+# First, install the parent POM
+RUN mvn -N install
+
+# Then build and package order-service specifically
+RUN cd order-service && mvn clean package -DskipTests
 
 FROM eclipse-temurin:21-jre
 

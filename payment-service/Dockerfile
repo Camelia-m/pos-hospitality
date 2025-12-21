@@ -5,8 +5,11 @@ WORKDIR /build
 # Copy the entire project structure
 COPY . .
 
-# Build only the payment-service module
-RUN mvn -pl payment-service -am clean install -DskipTests
+# First, install the parent POM
+RUN mvn -N install
+
+# Then build and package payment-service specifically
+RUN cd payment-service && mvn clean package -DskipTests
 
 FROM eclipse-temurin:21-jre
 
