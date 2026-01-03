@@ -1,0 +1,2 @@
+# POS Hospitality - System Architecture Documentation
+This document organizes the event-driven microservices architecture for the hospitality Point-of-Sale system according to the Diátaxis framework. The system is built with Spring Boot and designed for offline-first operation.
